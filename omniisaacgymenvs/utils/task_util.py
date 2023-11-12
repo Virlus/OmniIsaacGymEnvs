@@ -28,6 +28,7 @@
 
 
 def import_tasks():
+    from omniisaacgymenvs.tasks.aliengo_terrain import AliengoTerrainTask
     from omniisaacgymenvs.tasks.allegro_hand import AllegroHandTask
     from omniisaacgymenvs.tasks.ant import AntLocomotionTask
     from omniisaacgymenvs.tasks.anymal import AnymalTask
@@ -52,6 +53,7 @@ def import_tasks():
 
     # Mappings from strings to environments
     task_map = {
+        "AliengoTerrain": AliengoTerrainTask,
         "AllegroHand": AllegroHandTask,
         "Ant": AntLocomotionTask,
         "Anymal": AnymalTask,
