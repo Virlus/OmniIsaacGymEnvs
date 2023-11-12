@@ -1,4 +1,4 @@
-# Omniverse Isaac Gym Reinforcement Learning Environments for Isaac Sim
+# Omniverse Isaac Gym Reinforcement Learning Environments for Isaac Sim (With Customized Tasks)
 
 ## About this repository
 
@@ -322,5 +322,3 @@ PYTHON_PATH scripts/rlgames_demo.py task=AnymalTerrain num_envs=64 checkpoint=om
 ```
 
 <img src="https://user-images.githubusercontent.com/34286328/184688654-6e7899b2-5847-4184-8944-2a96b129b1ff.gif" width="600" height="300"/>
-
-# OmniIsaacGymEnvs
