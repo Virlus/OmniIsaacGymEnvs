@@ -203,7 +203,7 @@ class AliengoTerrainTask(RLTask):
         self.get_aliengo()
         super().set_up_scene(scene, collision_filter_global_paths=["/World/terrain"])
         self._aliengos = AliengoView(
-            prim_paths_expr="/World/envs/.*/aliengo", name="aliengo_view", track_contact_forces=True
+            prim_paths_expr="/World/envs/.*/aliengo", name="aliengo_view", track_contact_forces=True, stage = self._stage
         )
         scene.add(self._aliengos)
         scene.add(self._aliengos._knees)
@@ -246,7 +246,7 @@ class AliengoTerrainTask(RLTask):
         aliengo = Aliengo(
             prim_path=self.default_zero_env_path + "/aliengo",
             name="aliengo",
-            usd_path="./robots/models/aliengo.urdf"
+            usd_path="./robots/models/aliengo/urdf/aliengo/aliengo.usd",
             translation=aliengo_translation,
             orientation=aliengo_orientation,
         )

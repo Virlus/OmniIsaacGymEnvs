@@ -39,12 +39,16 @@ class AliengoView(ArticulationView):
         name: Optional[str] = "AliengoView",
         track_contact_forces=False,
         prepare_contact_sensors=False,
+        stage = None
     ) -> None:
         """[summary]"""
 
         super().__init__(prim_paths_expr=prim_paths_expr, name=name, reset_xform_properties=False)
+        # knees_prim = stage.DefinePrim(path = "/World/envs/.*/aliengo/.*_THIGH", typeName = "Xform")
+        # base_prim = stage.DefinePrim(path = "/World/envs/aliengo/base", typeName = "Xform")
+        
         self._knees = RigidPrimView(
-            prim_paths_expr="/World/envs/.*/aliengo/.*_THIGH",
+            prim_paths_expr="/World/envs/.*/aliengo/.*_thigh",
             name="knees_view",
             reset_xform_properties=False,
             track_contact_forces=track_contact_forces,
