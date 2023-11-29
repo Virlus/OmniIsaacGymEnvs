@@ -48,7 +48,7 @@ class AliengoView(ArticulationView):
         # base_prim = stage.DefinePrim(path = "/World/envs/aliengo/base", typeName = "Xform")
         
         self._knees = RigidPrimView(
-            prim_paths_expr="/World/envs/.*/aliengo/.*_thigh",
+            prim_paths_expr="/World/envs/.*/aliengo/.*_thigh$",
             name="knees_view",
             reset_xform_properties=False,
             track_contact_forces=track_contact_forces,
