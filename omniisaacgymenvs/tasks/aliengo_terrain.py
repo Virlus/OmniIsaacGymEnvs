@@ -399,8 +399,8 @@ class AliengoTerrainTask(RLTask):
                 torques = torch.clip(
                     self.Kp * (self.action_scale * self.actions + self.default_dof_pos - self.dof_pos)
                     - self.Kd * self.dof_vel,
-                    -80.0,
-                    80.0,
+                    -50.0,
+                    50.0,
                 )
                 self._aliengos.set_joint_efforts(torques)
                 self.torques = torques
