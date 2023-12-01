@@ -99,7 +99,7 @@ class Aliengo(Robot):
     def prepare_contacts(self, stage, prim):
         for link_prim in prim.GetChildren():
             if link_prim.HasAPI(PhysxSchema.PhysxRigidBodyAPI):
-                if "_HIP" not in str(link_prim.GetPrimPath()):
+                if "_hip" not in str(link_prim.GetPrimPath()):
                     rb = PhysxSchema.PhysxRigidBodyAPI.Get(stage, link_prim.GetPrimPath())
                     rb.CreateSleepThresholdAttr().Set(0)
                     cr_api = PhysxSchema.PhysxContactReportAPI.Apply(link_prim)

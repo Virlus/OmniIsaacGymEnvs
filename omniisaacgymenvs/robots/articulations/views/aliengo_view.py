@@ -55,7 +55,7 @@ class AliengoView(ArticulationView):
             prepare_contact_sensors=prepare_contact_sensors,
         )
         self._base = RigidPrimView(
-            prim_paths_expr="/World/envs/.*/aliengo/base",
+            prim_paths_expr="/World/envs/.*/aliengo/trunk",
             name="base_view",
             reset_xform_properties=False,
             track_contact_forces=track_contact_forces,

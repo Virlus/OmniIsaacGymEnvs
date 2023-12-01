@@ -1,6 +1,6 @@
 task_name: ${task.name}
 experiment: ''
-num_envs: ''
+num_envs: 64
 seed: 42
 torch_deterministic: false
 max_iterations: ''
@@ -9,13 +9,13 @@ pipeline: gpu
 sim_device: gpu
 device_id: 0
 rl_device: cuda:0
-multi_gpu: true
+multi_gpu: false
 num_threads: 4
 solver_type: 1
-test: false
-checkpoint: ''
+test: true
+checkpoint: /home/PJLAB/yuwenye/Documents/OmniIsaacGymEnvs/omniisaacgymenvs/runs/FrankaCabinet/nn/last_FrankaCabinet_ep_1000_rew_2599.2668.pth
 evaluation: false
-headless: true
+headless: false
 enable_livestream: false
 mt_timeout: 90
 wandb_activate: false

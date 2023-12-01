@@ -40,6 +40,7 @@ from omniisaacgymenvs.robots.articulations.views.aliengo_view import AliengoView
 from omniisaacgymenvs.tasks.utils.anymal_terrain_generator import *
 from omniisaacgymenvs.utils.terrain_utils.terrain_utils import *
 from pxr import UsdLux, UsdPhysics
+import time
 
 
 class AliengoTerrainTask(RLTask):
@@ -200,14 +201,20 @@ class AliengoTerrainTask(RLTask):
     def set_up_scene(self, scene) -> None:
         self._stage = get_current_stage()
         self.get_terrain()
+        # self.env_origins = torch.zeros((self.num_envs, 3), device=self.device, requires_grad=False)
+        # self.height_samples = (
+        #     torch.zeros((1200, 2000)).to(self.device)
+        # )
         self.get_aliengo()
         super().set_up_scene(scene, collision_filter_global_paths=["/World/terrain"])
+        # super().set_up_scene(scene)
         self._aliengos = AliengoView(
             prim_paths_expr="/World/envs/.*/aliengo", name="aliengo_view", track_contact_forces=True, stage = self._stage
         )
         scene.add(self._aliengos)
         scene.add(self._aliengos._knees)
         scene.add(self._aliengos._base)
+        # scene.add_default_ground_plane(prim_path = "/World/defaultGroundPlane")
 
     def initialize_views(self, scene):
         # initialize terrain variables even if we do not need to re-create the terrain mesh
@@ -246,7 +253,7 @@ class AliengoTerrainTask(RLTask):
         aliengo = Aliengo(
             prim_path=self.default_zero_env_path + "/aliengo",
             name="aliengo",
-            usd_path="./robots/models/aliengo/urdf/aliengo/aliengo.usd",
+            usd_path="/home/PJLAB/yuwenye/Documents/OmniIsaacGymEnvs/omniisaacgymenvs/robots/models/aliengo/urdf/aliengo/aliengo.usd",
             translation=aliengo_translation,
             orientation=aliengo_orientation,
         )
@@ -302,6 +309,7 @@ class AliengoTerrainTask(RLTask):
 
         for i in range(self.num_envs):
             self.env_origins[i] = self.terrain_origins[self.terrain_levels[i], self.terrain_types[i]]
+            # self.env_origins[i] = torch.tensor([0.0, 0.0, 0.0]).cuda()
         self.num_dof = self._aliengos.num_dof
         self.dof_pos = torch.zeros((self.num_envs, self.num_dof), dtype=torch.float, device=self.device)
         self.dof_vel = torch.zeros((self.num_envs, self.num_dof), dtype=torch.float, device=self.device)
@@ -591,7 +599,9 @@ class AliengoTerrainTask(RLTask):
             ).unsqueeze(1)
 
         points += self.terrain.border_size
+        # points += 20
         points = (points / self.terrain.horizontal_scale).long()
+        # points = (points / 0.1).long()
         px = points[:, :, 0].view(-1)
         py = points[:, :, 1].view(-1)
         px = torch.clip(px, 0, self.height_samples.shape[0] - 2)
@@ -603,6 +613,7 @@ class AliengoTerrainTask(RLTask):
         heights = torch.min(heights1, heights2)
 
         return heights.view(self.num_envs, -1) * self.terrain.vertical_scale
+        # return heights.view(self.num_envs, -1) * 0.005
 
 
 @torch.jit.script
