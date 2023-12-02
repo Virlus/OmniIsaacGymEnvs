@@ -46,6 +46,7 @@ def import_tasks():
     from omniisaacgymenvs.tasks.ingenuity import IngenuityTask
     from omniisaacgymenvs.tasks.quadcopter import QuadcopterTask
     from omniisaacgymenvs.tasks.shadow_hand import ShadowHandTask
+    from omniisaacgymenvs.tasks.go1widow_terrain import Go1WidowTerrainTask
 
     from omniisaacgymenvs.tasks.warp.ant import AntLocomotionTask as AntLocomotionTaskWarp
     from omniisaacgymenvs.tasks.warp.cartpole import CartpoleTask as CartpoleTaskWarp
@@ -73,6 +74,7 @@ def import_tasks():
         "ShadowHand": ShadowHandTask,
         "ShadowHandOpenAI_FF": ShadowHandTask,
         "ShadowHandOpenAI_LSTM": ShadowHandTask,
+        "Go1WidowTerrain": Go1WidowTerrainTask,
     }
 
     task_map_warp = {
