@@ -3,8 +3,8 @@ name: AliengoTerrain
 physics_engine: ${..physics_engine}
 
 env:
-  numEnvs: ${resolve_default:256,${...num_envs}}
-  numObservations: 238
+  numEnvs: ${resolve_default:8192,${...num_envs}}
+  numObservations: 188
   numActions: 12
   envSpacing: 3.  # [m]
 
@@ -25,7 +25,7 @@ env:
     slopeTreshold: 0.75
 
   baseInitState:
-    pos: [0.0, 0.0, 0.42] # x,y,z [m]
+    pos: [0.0, 0.0, 0.55] # x,y,z [m]
     rot: [1.0, 0.0, 0.0, 0.0] # w,x,y,z [quat]
     vLinear: [0.0, 0.0, 0.0]  # x,y,z [m/s]
     vAngular: [0.0, 0.0, 0.0]  # x,y,z [rad/s]
@@ -53,10 +53,10 @@ env:
     FL_thigh_joint: 0.8     # [rad]
     FL_calf_joint: -1.5   # [rad]
     RR_hip_joint: 0.0     # [rad]
-    RR_thigh_joint: 1.   # [rad]
+    RR_thigh_joint: 0.8   # [rad]
     RR_calf_joint: -1.5   # [rad]
     RL_hip_joint: 0.0    # [rad]
-    RL_thigh_joint: 1.    # [rad]
+    RL_thigh_joint: 0.8    # [rad]
     RL_calf_joint: -1.5     # [rad]
 
 
@@ -137,7 +137,7 @@ sim:
     gpu_max_rigid_contact_count: 524288
     gpu_max_rigid_patch_count: 163840
     gpu_found_lost_pairs_capacity: 4194304
-    gpu_found_lost_aggregate_pairs_capacity: 33554432
+    gpu_found_lost_aggregate_pairs_capacity: 268081869
     gpu_total_aggregate_pairs_capacity: 4194304
     gpu_max_soft_body_contacts: 1048576
     gpu_max_particle_contacts: 1048576

@@ -253,7 +253,7 @@ class AliengoTerrainTask(RLTask):
         aliengo = Aliengo(
             prim_path=self.default_zero_env_path + "/aliengo",
             name="aliengo",
-            usd_path="/home/PJLAB/yuwenye/Documents/OmniIsaacGymEnvs/omniisaacgymenvs/robots/models/aliengo/urdf/aliengo/aliengo.usd",
+            usd_path="./robots/models/aliengo/urdf/aliengo/aliengo.usd",
             translation=aliengo_translation,
             orientation=aliengo_orientation,
         )
@@ -407,8 +407,8 @@ class AliengoTerrainTask(RLTask):
                 torques = torch.clip(
                     self.Kp * (self.action_scale * self.actions + self.default_dof_pos - self.dof_pos)
                     - self.Kd * self.dof_vel,
-                    -50.0,
-                    50.0,
+                    -80.0,
+                    80.0,
                 )
                 self._aliengos.set_joint_efforts(torques)
                 self.torques = torques
@@ -489,7 +489,7 @@ class AliengoTerrainTask(RLTask):
         rew_orient = torch.sum(torch.square(self.projected_gravity[:, :2]), dim=1) * self.rew_scales["orient"]
 
         # base height penalty
-        rew_base_height = torch.square(self.base_pos[:, 2] - 0.52) * self.rew_scales["base_height"]
+        rew_base_height = torch.square(self.base_pos[:, 2] - 0.40) * self.rew_scales["base_height"]
 
         # torque penalty
         rew_torque = torch.sum(torch.square(self.torques), dim=1) * self.rew_scales["torque"]
@@ -524,7 +524,7 @@ class AliengoTerrainTask(RLTask):
             + rew_hip
             + rew_fallen_over
         )
-        self.rew_buf = torch.clip(self.rew_buf, min=0.0, max=None)
+        # self.rew_buf = torch.clip(self.rew_buf, min=0.0, max=None) # Whether to clip the negative rewards
 
         # add termination reward
         self.rew_buf += self.rew_scales["termination"] * self.reset_buf * ~self.timeout_buf
