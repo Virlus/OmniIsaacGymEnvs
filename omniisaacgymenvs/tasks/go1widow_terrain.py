@@ -54,6 +54,8 @@ class Go1WidowTerrainTask(RLTask):
         self._num_observations = 204
         self._num_actions = 12
         self.num_joints = 20
+        self.clip_actions = 10.
+
 
         self.update_config(sim_config)
 
@@ -66,6 +68,8 @@ class Go1WidowTerrainTask(RLTask):
             (self.num_envs, self.num_joints), dtype=torch.float, device=self.device, requires_grad=False
         )
         # reward episode sums
+        self.torque_limits = torch.tensor([10., 20., 15., 2., 5., 1.] + [80]*12+[5., 5.]).to(self.device)
+
         torch_zeros = lambda: torch.zeros(self.num_envs, dtype=torch.float, device=self.device, requires_grad=False)
         self.episode_sums = {
             "lin_vel_xy": torch_zeros(),
@@ -158,7 +162,8 @@ class Go1WidowTerrainTask(RLTask):
 
     def _get_noise_scale_vec(self, cfg):
         noise_vec = torch.zeros_like(self.obs_buf[0])
-        self.add_noise = self._task_cfg["env"]["learn"]["addNoise"]
+        # self.add_noise = self._task_cfg["env"]["learn"]["addNoise"]
+        self.add_noise = False
         noise_level = self._task_cfg["env"]["learn"]["noiseLevel"]
         noise_vec[:3] = self._task_cfg["env"]["learn"]["linearVelocityNoise"] * noise_level * self.lin_vel_scale
         noise_vec[3:6] = self._task_cfg["env"]["learn"]["angularVelocityNoise"] * noise_level * self.ang_vel_scale
@@ -215,6 +220,7 @@ class Go1WidowTerrainTask(RLTask):
         scene.add(self._go1widow)
         scene.add(self._go1widow._knees)
         scene.add(self._go1widow._base)
+        
         # scene.add_default_ground_plane(prim_path = "/World/defaultGroundPlane")
 
     def initialize_views(self, scene):
@@ -264,12 +270,9 @@ class Go1WidowTerrainTask(RLTask):
         )
         go1widow.set_go1widow_properties(self._stage, go1widow.prim)
         go1widow.prepare_contacts(self._stage, go1widow.prim)
+        
 
-        self.dof_names = go1widow.dof_names
-        for i in range(self.num_actions):
-            name = self.dof_names[i]
-            angle = self.named_default_joint_angles[name]
-            self.default_dof_pos[:, i] = angle
+        
 
     def _keep_arm_fixed(self):
         self.dof_pos[:, self.num_actions:] = self.default_dof_pos[:, self.num_actions:]
@@ -335,14 +338,18 @@ class Go1WidowTerrainTask(RLTask):
         self.reset_idx(indices)
         self.init_done = True
 
+
+
     def reset_idx(self, env_ids):
+        self.dof_names = self._go1widow.dof_names
+        for i in range(self.num_joints):
+            name = self.dof_names[i]
+            angle = self.named_default_joint_angles[name]
+            self.default_dof_pos[:, i] = angle
+
         indices = env_ids.to(dtype=torch.int32)
-
-        positions_offset = torch_rand_float(0.5, 1.5, (len(env_ids), self.num_dof), device=self.device)
-        velocities = torch_rand_float(-0.1, 0.1, (len(env_ids), self.num_dof), device=self.device)
-
-        self.dof_pos[env_ids] = self.default_dof_pos[env_ids] * positions_offset
-        self.dof_vel[env_ids] = velocities
+        self.dof_pos[env_ids] = self.default_dof_pos[env_ids]
+        self.dof_vel[env_ids] = torch.zeros((len(env_ids), self.num_dof), dtype=torch.float, device=self.device)
 
         self.update_terrain_level(env_ids)
         self.base_pos[env_ids] = self.base_init_state[0:3]
@@ -385,6 +392,7 @@ class Go1WidowTerrainTask(RLTask):
             )
             self.episode_sums[key][env_ids] = 0.0
         self.extras["episode"]["terrain_level"] = torch.mean(self.terrain_levels.float())
+        
 
     def update_terrain_level(self, env_ids):
         if not self.init_done or not self.curriculum:
@@ -411,30 +419,33 @@ class Go1WidowTerrainTask(RLTask):
     def pre_physics_step(self, actions):
         if not self._env._world.is_playing():
             return
-        # self._keep_arm_fixed()
-        self.actions = actions.clone().to(self.device)
-        actions = torch.cat((self.actions, self.default_dof_pos[:, self.num_actions:]), dim=1)
+        self.actions = torch.clip(actions, -self.clip_actions, self.clip_actions).to(self.device)
         for i in range(self.decimation):
             if self._env._world.is_playing():
-                torques = torch.clip(
-                    self.Kp * (self.action_scale * actions + self.default_dof_pos - self.dof_pos)
-                    - self.Kd * self.dof_vel,
-                    -80.0,
-                    80.0,
-                )
+                torques = self.compute_torques(self.actions)
                 self._go1widow.set_joint_efforts(torques)
                 self.torques = torques
                 SimulationContext.step(self._env._world, render=False)
                 self.refresh_dof_state_tensors()
 
+    def compute_torques(self, actions):
+        actions_scaled = actions[:, :self.num_actions]  * self.action_scale
+        actions_scaled[:, [6, 7, 8, 9]] *= 0.5
+        joint_pos_target = actions_scaled + self.default_dof_pos[:, 6:18]
+        joint_pos_target = torch.cat((self.default_dof_pos[:, :6], joint_pos_target, self.default_dof_pos[:, 18:]), dim=1)
+        torques = self.Kp * (joint_pos_target - self.dof_pos) - self.Kd * self.dof_vel
+        return torch.clip(torques, -self.torque_limits, self.torque_limits)
+        # return torques
+        # return torch.zeros_like(torques).to(self.device)
+
+
     def post_physics_step(self):
         self.progress_buf[:] += 1
 
         if self._env._world.is_playing():
-
+            
             self.refresh_dof_state_tensors()
             self.refresh_body_state_tensors()
-
             self.common_step_counter += 1
             if self.common_step_counter % self.push_interval == 0:
                 self.push_robots()
@@ -485,11 +496,15 @@ class Go1WidowTerrainTask(RLTask):
         )
         self.reset_buf = self.has_fallen.clone()
         self.reset_buf = torch.where(self.timeout_buf.bool(), torch.ones_like(self.reset_buf), self.reset_buf)
-        self.reset_buf = self.timeout_buf
+        around_height = torch.mean(self.get_heights(),dim=1)
+        self.body_height_buf = (self.base_pos[:, 2] - around_height) < 0.28
+        self.reset_buf |= self.body_height_buf
+
 
     def calculate_metrics(self):
         # velocity tracking reward
         lin_vel_error = torch.sum(torch.square(self.commands[:, :2] - self.base_lin_vel[:, :2]), dim=1)
+        
         ang_vel_error = torch.square(self.commands[:, 2] - self.base_ang_vel[:, 2])
         rew_lin_vel_xy = torch.exp(-lin_vel_error / 0.25) * self.rew_scales["lin_vel_xy"]
         rew_ang_vel_z = torch.exp(-ang_vel_error / 0.25) * self.rew_scales["ang_vel_z"]
@@ -501,8 +516,9 @@ class Go1WidowTerrainTask(RLTask):
         # orientation penalty
         rew_orient = torch.sum(torch.square(self.projected_gravity[:, :2]), dim=1) * self.rew_scales["orient"]
 
+        around_height = self.get_heights()
         # base height penalty
-        rew_base_height = torch.square(self.base_pos[:, 2] - 0.52) * self.rew_scales["base_height"]
+        rew_base_height = torch.square(self.base_pos[:, 2] - torch.mean(around_height) - 0.30) * self.rew_scales["base_height"]
 
         # torque penalty
         rew_torque = torch.sum(torch.square(self.torques), dim=1) * self.rew_scales["torque"]

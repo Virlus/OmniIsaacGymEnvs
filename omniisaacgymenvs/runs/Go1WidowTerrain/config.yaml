@@ -70,8 +70,8 @@ task:
       - 0.0
     randomCommandVelocityRanges:
       linear_x:
-      - -1.0
-      - 1.0
+      - -3.0
+      - 3.0
       linear_y:
       - -1.0
       - 1.0
@@ -79,31 +79,29 @@ task:
       - -3.14
       - 3.14
     control:
-      stiffness: 25.0
-      damping: 1.0
-      actionScale: 0.5
+      stiffness: 100.0
+      damping: 5.0
+      actionScale: 0.25
       decimation: 4
     defaultJointAngles:
-      FL_hip_joint: 0.1
-      RL_hip_joint: 0.1
-      FR_hip_joint: -0.1
-      RR_hip_joint: -0.1
-      FL_thigh_joint: 0.8
-      RL_thigh_joint: 0.8
-      FR_thigh_joint: 0.8
-      RR_thigh_joint: 0.8
-      FL_calf_joint: -1.5
-      RL_calf_joint: -1.5
-      FR_calf_joint: -1.5
-      RR_calf_joint: -1.5
-      widow_waist: 0.0
       widow_shoulder: 0.0
       widow_elbow: 0.0
-      forearm_roll: 0.0
+      widow_waist: 0.0
+      widow_forearm_roll: 0.0
       widow_wrist_angle: 0.0
       widow_wrist_rotate: 0.0
-      widow_forearm_roll: 0.0
-      gripper: 0.0
+      FL_hip_joint: 0.1
+      FR_hip_joint: -0.1
+      RL_hip_joint: 0.1
+      RR_hip_joint: -0.1
+      FL_thigh_joint: 0.8
+      FR_thigh_joint: 0.8
+      RL_thigh_joint: 1.0
+      RR_thigh_joint: 1.0
+      FL_calf_joint: -1.5
+      FR_calf_joint: -1.5
+      RL_calf_joint: -1.5
+      RR_calf_joint: -1.5
       widow_left_finger: 0.0
       widow_right_finger: 0.0
     learn:
@@ -164,7 +162,7 @@ task:
       friction_correlation_distance: 0.025
       enable_sleeping: true
       enable_stabilization: true
-      max_depenetration_velocity: 10.0
+      max_depenetration_velocity: 1.0
       gpu_max_rigid_contact_count: 524288
       gpu_max_rigid_patch_count: 163840
       gpu_found_lost_pairs_capacity: 4194304
@@ -184,7 +182,7 @@ task:
       sleep_threshold: 0.005
       stabilization_threshold: 0.001
       density: -1
-      max_depenetration_velocity: 10.0
+      max_depenetration_velocity: 1.0
 train:
   params:
     seed: ${...seed}

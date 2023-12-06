@@ -3,3 +3,4 @@ __pycache__/
 omniisaacgymenvs.egg-info/
 checkpoints
 omniisaacgymenvs/wandb
+omniisaacgymenvs/runs/
