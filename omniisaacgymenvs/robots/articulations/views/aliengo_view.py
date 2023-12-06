@@ -61,6 +61,13 @@ class AliengoView(ArticulationView):
             track_contact_forces=track_contact_forces,
             prepare_contact_sensors=prepare_contact_sensors,
         )
+        self._feet = RigidPrimView(
+            prim_paths_expr = "/World/envs/.*/aliengo/.*_foot$",
+            name = "feet_view",
+            reset_xform_properties=False,
+            track_contact_forces=track_contact_forces,
+            prepare_contact_sensors=prepare_contact_sensors,
+        )
 
     def get_knee_transforms(self):
         return self._knees.get_world_poses()

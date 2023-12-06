@@ -80,6 +80,10 @@ class AliengoTerrainTask(RLTask):
             "stumble": torch_zeros(),
             "action_rate": torch_zeros(),
             "hip": torch_zeros(),
+            "foot_clearance": torch_zeros(),
+            "joint_power": torch_zeros(),
+            "smoothness": torch_zeros(),
+            "power_distribution": torch_zeros(),
         }
         return
 
@@ -110,6 +114,10 @@ class AliengoTerrainTask(RLTask):
         self.rew_scales["action_rate"] = self._task_cfg["env"]["learn"]["actionRateRewardScale"]
         self.rew_scales["hip"] = self._task_cfg["env"]["learn"]["hipRewardScale"]
         self.rew_scales["fallen_over"] = self._task_cfg["env"]["learn"]["fallenOverRewardScale"]
+        self.rew_scales["foot_clearance"] = self._task_cfg["env"]["learn"]["footClearanceRewardScale"]
+        self.rew_scales["joint_power"] = self._task_cfg["env"]["learn"]["jointPowerRewardScale"]
+        self.rew_scales["smoothness"] = self._task_cfg["env"]["learn"]["smoothnessRewardScale"]
+        self.rew_scales["power_distribution"] = self._task_cfg["env"]["learn"]["powerDistributionRewardScale"]
 
         # command ranges
         self.command_x_range = self._task_cfg["env"]["randomCommandVelocityRanges"]["linear_x"]
@@ -248,7 +256,7 @@ class AliengoTerrainTask(RLTask):
         self.terrain_origins = torch.from_numpy(self.terrain.env_origins).to(self.device).to(torch.float)
 
     def get_aliengo(self):
-        aliengo_translation = torch.tensor([0.0, 0.0, 0.66])
+        aliengo_translation = torch.tensor([0.0, 0.0, 0.42])
         aliengo_orientation = torch.tensor([1.0, 0.0, 0.0, 0.0])
         aliengo = Aliengo(
             prim_path=self.default_zero_env_path + "/aliengo",
@@ -302,6 +310,9 @@ class AliengoTerrainTask(RLTask):
             self.num_envs, self.num_actions, dtype=torch.float, device=self.device, requires_grad=False
         )
         self.last_actions = torch.zeros(
+            self.num_envs, self.num_actions, dtype=torch.float, device=self.device, requires_grad=False
+        )
+        self.last_last_actions = torch.zeros(
             self.num_envs, self.num_actions, dtype=torch.float, device=self.device, requires_grad=False
         )
         self.feet_air_time = torch.zeros(self.num_envs, 4, dtype=torch.float, device=self.device, requires_grad=False)
@@ -361,6 +372,7 @@ class AliengoTerrainTask(RLTask):
         )  # set small commands to zero
 
         self.last_actions[env_ids] = 0.0
+        self.last_last_actions[env_ids] = 0.0
         self.last_dof_vel[env_ids] = 0.0
         self.feet_air_time[env_ids] = 0.0
         self.progress_buf[env_ids] = 0
@@ -396,6 +408,10 @@ class AliengoTerrainTask(RLTask):
         self.base_pos, self.base_quat = self._aliengos.get_world_poses(clone=False)
         self.base_velocities = self._aliengos.get_velocities(clone=False)
         self.knee_pos, self.knee_quat = self._aliengos._knees.get_world_poses(clone=False)
+        self.feet_pos, self.feet_quat = self._aliengos._feet.get_world_poses(clone = False)
+        self.feet_vel = self._aliengos._feet.get_velocities(clone = False)
+        self.feet_pos = self.feet_pos.reshape(self._num_envs, 4, 3)
+        self.feet_vel = self.feet_vel.reshape(self._num_envs, 4, 6)
 
     def pre_physics_step(self, actions):
         if not self._env._world.is_playing():
@@ -430,6 +446,16 @@ class AliengoTerrainTask(RLTask):
             # prepare quantities
             self.base_lin_vel = quat_rotate_inverse(self.base_quat, self.base_velocities[:, 0:3])
             self.base_ang_vel = quat_rotate_inverse(self.base_quat, self.base_velocities[:, 3:6])
+            # Foot clearance reward needed
+            curr_footpos_translated = self.feet_pos - self.base_pos.unsqueeze(1)
+            curr_footvel_translated = self.feet_vel[:, :, 0:3] - self.base_velocities[:, 0:3].unsqueeze(1)
+            self.foot_pos_body_frame = torch.zeros(self._num_envs, 4, 3, device = self._device)
+            self.foot_vel_body_frame = torch.zeros(self._num_envs, 4, 3, device = self._device)
+            for i in range(4):
+                self.foot_pos_body_frame[:, i, :] = quat_rotate_inverse(self.base_quat, curr_footpos_translated[:, i, :])
+                self.foot_vel_body_frame[:, i, :] = quat_rotate_inverse(self.base_quat, curr_footvel_translated[:, i, :])
+
+            # Resume preparing quantities
             self.projected_gravity = quat_rotate_inverse(self.base_quat, self.gravity_vec)
             forward = quat_apply(self.base_quat, self.forward_vec)
             heading = torch.atan2(forward[:, 1], forward[:, 0])
@@ -447,6 +473,7 @@ class AliengoTerrainTask(RLTask):
             if self.add_noise:
                 self.obs_buf += (2 * torch.rand_like(self.obs_buf) - 1) * self.noise_scale_vec
 
+            self.last_last_actions[:] = self.last_actions[:]
             self.last_actions[:] = self.actions[:]
             self.last_dof_vel[:] = self.dof_vel[:]
 
@@ -497,12 +524,30 @@ class AliengoTerrainTask(RLTask):
         # joint acc penalty
         rew_joint_acc = torch.sum(torch.square(self.last_dof_vel - self.dof_vel), dim=1) * self.rew_scales["joint_acc"]
 
+        # joint power penalty
+        rew_joint_power = torch.sum(torch.abs(self.dof_vel) * torch.abs(self.torques), dim = 1) * self.rew_scales["joint_power"]
+
         # fallen over penalty
         rew_fallen_over = self.has_fallen * self.rew_scales["fallen_over"]
+
+        # foot clearance penalty
+        height_error = torch.square(self.foot_pos_body_frame[:, :, 2] + 0.22).view(self._num_envs, -1)
+        foot_lateral_vel = torch.sqrt(torch.sum(torch.square(self.foot_vel_body_frame[:, :, :2]), dim = 2)).view(self._num_envs, -1)
+        rew_foot_clearance = torch.sum(height_error * foot_lateral_vel, dim = 1) * self.rew_scales["foot_clearance"]
 
         # action rate penalty
         rew_action_rate = (
             torch.sum(torch.square(self.last_actions - self.actions), dim=1) * self.rew_scales["action_rate"]
+        )
+
+        # smoothness penalty
+        rew_smoothness = (
+            torch.sum(torch.square(self.actions - self.last_actions * 2.0 + self.last_last_actions), dim = 1) * self.rew_scales["smoothness"]
+        )
+
+        # power distribution penalty
+        rew_power_distribution = (
+            torch.var(torch.abs(self.dof_vel) * torch.abs(self.torques), dim = 1) * self.rew_scales["power_distribution"]
         )
 
         # cosmetic penalty for hip motion
@@ -523,8 +568,12 @@ class AliengoTerrainTask(RLTask):
             + rew_action_rate
             + rew_hip
             + rew_fallen_over
+            + rew_foot_clearance
+            + rew_joint_power
+            + rew_smoothness
+            + rew_power_distribution
         )
-        # self.rew_buf = torch.clip(self.rew_buf, min=0.0, max=None) # Whether to clip the negative rewards
+        # self.rew_buf = torch.clip(self.rew_buf, min=0.0, max=None)
 
         # add termination reward
         self.rew_buf += self.rew_scales["termination"] * self.reset_buf * ~self.timeout_buf
@@ -540,6 +589,10 @@ class AliengoTerrainTask(RLTask):
         self.episode_sums["action_rate"] += rew_action_rate
         self.episode_sums["base_height"] += rew_base_height
         self.episode_sums["hip"] += rew_hip
+        self.episode_sums["foot_clearance"] += rew_foot_clearance
+        self.episode_sums["joint_power"] += rew_joint_power
+        self.episode_sums["smoothness"] += rew_smoothness
+        self.episode_sums["power_distribution"] += rew_power_distribution
 
     def get_observations(self):
         self.measured_heights = self.get_heights()

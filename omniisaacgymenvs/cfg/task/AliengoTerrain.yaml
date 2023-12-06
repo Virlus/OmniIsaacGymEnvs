@@ -3,7 +3,7 @@ name: AliengoTerrain
 physics_engine: ${..physics_engine}
 
 env:
-  numEnvs: ${resolve_default:8192,${...num_envs}}
+  numEnvs: ${resolve_default:128,${...num_envs}}
   numObservations: 188
   numActions: 12
   envSpacing: 3.  # [m]
@@ -73,6 +73,10 @@ env:
     baseHeightRewardScale: -1.0
     actionRateRewardScale: -0.01
     fallenOverRewardScale: -1.0
+    footClearanceRewardScale: -0.01
+    jointPowerRewardScale: -2e-5
+    smoothnessRewardScale: -0.01
+    powerDistributionRewardScale: -1e-5
     # cosmetics
     hipRewardScale: -0. #25
 
@@ -136,9 +140,9 @@ sim:
     # GPU buffers
     gpu_max_rigid_contact_count: 524288
     gpu_max_rigid_patch_count: 163840
-    gpu_found_lost_pairs_capacity: 4194304
-    gpu_found_lost_aggregate_pairs_capacity: 268081869
-    gpu_total_aggregate_pairs_capacity: 4194304
+    gpu_found_lost_pairs_capacity: 2000000
+    gpu_found_lost_aggregate_pairs_capacity: 5000000
+    gpu_total_aggregate_pairs_capacity: 2000000
     gpu_max_soft_body_contacts: 1048576
     gpu_max_particle_contacts: 1048576
     gpu_heap_capacity: 134217728

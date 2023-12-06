@@ -81,6 +81,7 @@ class Aliengo(Robot):
             "RR_calf_joint"
         ]
 
+
     @property
     def dof_names(self):
         return self._dof_names
