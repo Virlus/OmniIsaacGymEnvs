@@ -38,8 +38,8 @@ env:
 
   control:
     # PD Drive parameters:
-    stiffness: 100.0  # [N*m/rad]
-    damping: 5.0    # [N*m*s/rad]
+    stiffness: 25.0  # [N*m/rad]
+    damping: 1.0    # [N*m*s/rad]
     # action scale: target angle = actionScale * action + defaultAngle
     actionScale: 0.25
     # decimation: Number of control action updates @ sim DT per policy DT

@@ -203,7 +203,7 @@ class AnymalTerrainTask(RLTask):
         self.get_anymal()
         super().set_up_scene(scene, collision_filter_global_paths=["/World/terrain"])
         self._anymals = AnymalView(
-            prim_paths_expr="/World/envs/.*/anymal", name="anymal_view", track_contact_forces=True
+            prim_paths_expr="/World/envs/.*/anymal", name="anymal_view", track_contact_forces=True, stage=self._stage
         )
         scene.add(self._anymals)
         scene.add(self._anymals._knees)
@@ -246,6 +246,7 @@ class AnymalTerrainTask(RLTask):
         anymal = Anymal(
             prim_path=self.default_zero_env_path + "/anymal",
             name="anymal",
+            # usd_path="/home/elgceben/OmniIsaacGymEnvs/resources/anymal/bqw.usd",
             translation=anymal_translation,
             orientation=anymal_orientation,
         )

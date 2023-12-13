@@ -79,8 +79,8 @@ task:
       - -3.14
       - 3.14
     control:
-      stiffness: 100.0
-      damping: 5.0
+      stiffness: 25.0
+      damping: 1.0
       actionScale: 0.25
       decimation: 4
     defaultJointAngles:
@@ -205,8 +205,8 @@ train:
           fixed_sigma: true
       mlp:
         units:
-        - 512
-        - 256
+        - 128
+        - 128
         - 128
         activation: elu
         d2rl: false
@@ -237,7 +237,7 @@ train:
       tau: 0.95
       e_clip: 0.2
       entropy_coef: 0.01
-      learning_rate: 0.001
+      learning_rate: 0.0002
       lr_schedule: adaptive
       kl_threshold: 0.01
       truncate_grads: true
@@ -249,7 +249,7 @@ train:
       clip_value: true
       seq_length: 4
       bounds_loss_coef: 0.0
-      max_epochs: ${resolve_default:500,${....max_iterations}}
+      max_epochs: ${resolve_default:5000,${....max_iterations}}
       save_best_after: 100
       score_to_win: 20000
       save_frequency: 50

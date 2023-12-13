@@ -39,10 +39,15 @@ class AnymalView(ArticulationView):
         name: Optional[str] = "AnymalView",
         track_contact_forces=False,
         prepare_contact_sensors=False,
+        stage=None
     ) -> None:
         """[summary]"""
 
         super().__init__(prim_paths_expr=prim_paths_expr, name=name, reset_xform_properties=False)
+        
+        knees_prim = stage.DefinePrim(path = "/World/envs/.*/anymal/.*_THIGH", typeName = "Xform")
+        base_prim = stage.DefinePrim(path = "/World/envs/.*/anymal/base", typeName = "Xform")
+        
         self._knees = RigidPrimView(
             prim_paths_expr="/World/envs/.*/anymal/.*_THIGH",
             name="knees_view",

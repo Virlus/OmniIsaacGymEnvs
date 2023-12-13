@@ -497,7 +497,8 @@ class Go1WidowTerrainTask(RLTask):
         self.reset_buf = self.has_fallen.clone()
         self.reset_buf = torch.where(self.timeout_buf.bool(), torch.ones_like(self.reset_buf), self.reset_buf)
         around_height = torch.mean(self.get_heights(),dim=1)
-        self.body_height_buf = (self.base_pos[:, 2] - around_height) < 0.28
+        self.body_height_buf = (self.base_pos[:, 2] - around_height) < 0.28 
+        self.body_height_buf |= (self.base_pos[:, 2] - around_height) > 0.50
         self.reset_buf |= self.body_height_buf
 
 
