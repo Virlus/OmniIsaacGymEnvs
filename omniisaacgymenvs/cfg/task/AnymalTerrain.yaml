@@ -25,8 +25,8 @@ env:
     slopeTreshold: 0.5
 
   baseInitState:
-    pos: [0.0, 0.0, 0.62] # x,y,z [m]
-    rot: [1.0, 0.0, 0.0, 0.0] # w,x,y,z [quat]
+    pos: [0.0, 0.0, 0.96] # x,y,z [m]
+    rot: [0.5, 0.5, -0.5, 0.5] # w,x,y,z [quat]
     vLinear: [0.0, 0.0, 0.0]  # x,y,z [m/s]
     vAngular: [0.0, 0.0, 0.0]  # x,y,z [rad/s]
 
@@ -60,6 +60,23 @@ env:
     LH_KFE: 0.8     # [rad]
     RF_KFE: -0.8    # [rad]
     RH_KFE: 0.8     # [rad]
+
+    panda_joint1: 0.0
+    panda_joint2: 1.5
+    panda_joint3: 0.0
+    panda_joint4: -2.8
+    panda_joint5: 0.0
+    panda_joint6: 1.57
+    panda_joint7: 0.785
+    # panda_joint1: 0.0
+    # panda_joint2: 0.0
+    # panda_joint3: 0.0
+    # panda_joint4: 0.0
+    # panda_joint5: 0.0
+    # panda_joint6: 0.0
+    # panda_joint7: 0.0
+    panda_finger_joint1: 0.0
+    panda_finger_joint2: 0.0
 
 
   learn:
@@ -124,8 +141,8 @@ sim:
     worker_thread_count: ${....num_threads}
     solver_type: ${....solver_type}
     use_gpu: ${eq:${....sim_device},"gpu"} # set to False to run on CPU
-    solver_position_iteration_count: 4
-    solver_velocity_iteration_count: 0
+    solver_position_iteration_count: 12
+    solver_velocity_iteration_count: 1
     contact_offset: 0.02
     rest_offset: 0.0
     bounce_threshold_velocity: 0.2
@@ -133,7 +150,7 @@ sim:
     friction_correlation_distance: 0.025
     enable_sleeping: True
     enable_stabilization: True
-    max_depenetration_velocity: 100.0
+    max_depenetration_velocity: 0.5
 
     # GPU buffers
     gpu_max_rigid_contact_count: 524288
@@ -151,14 +168,14 @@ sim:
   anymal:
     # -1 to use default values
     override_usd_defaults: False
-    enable_self_collisions: True
-    enable_gyroscopic_forces: False
+    enable_self_collisions: False
+    enable_gyroscopic_forces: True
     # also in stage params
     # per-actor
-    solver_position_iteration_count: 4
-    solver_velocity_iteration_count: 0
+    solver_position_iteration_count: 12
+    solver_velocity_iteration_count: 1
     sleep_threshold: 0.005
     stabilization_threshold: 0.001
     # per-body
     density: -1
-    max_depenetration_velocity: 100.0
+    max_depenetration_velocity: 0.5

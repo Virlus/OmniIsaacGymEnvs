@@ -50,9 +50,9 @@ class AnymalTerrainTask(RLTask):
         self.init_done = False
         self._env_spacing = 0.0
 
-        self._num_observations = 188
+        self._num_observations = 206
         self._num_actions = 12
-
+        self._num_joints = 21
         self.update_config(sim_config)
 
         RLTask.__init__(self, name, env)
@@ -61,7 +61,7 @@ class AnymalTerrainTask(RLTask):
         self.measured_heights = None
         # joint positions offsets
         self.default_dof_pos = torch.zeros(
-            (self.num_envs, 12), dtype=torch.float, device=self.device, requires_grad=False
+            (self.num_envs, 21), dtype=torch.float, device=self.device, requires_grad=False
         )
         # reward episode sums
         torch_zeros = lambda: torch.zeros(self.num_envs, dtype=torch.float, device=self.device, requires_grad=False)
@@ -241,11 +241,12 @@ class AnymalTerrainTask(RLTask):
         self.terrain_origins = torch.from_numpy(self.terrain.env_origins).to(self.device).to(torch.float)
 
     def get_anymal(self):
-        anymal_translation = torch.tensor([0.0, 0.0, 0.66])
+        anymal_translation = torch.tensor([0.0, 0.0, 0.96])
         anymal_orientation = torch.tensor([1.0, 0.0, 0.0, 0.0])
         anymal = Anymal(
             prim_path=self.default_zero_env_path + "/anymal",
             name="anymal",
+            usd_path="/home/elgceben/OmniIsaacGymEnvs/resources/anymal/anymal_base_payload.usd",
             translation=anymal_translation,
             orientation=anymal_orientation,
         )
@@ -254,12 +255,11 @@ class AnymalTerrainTask(RLTask):
         )
         anymal.set_anymal_properties(self._stage, anymal.prim)
         anymal.prepare_contacts(self._stage, anymal.prim)
-
-        self.dof_names = anymal.dof_names
-        for i in range(self.num_actions):
-            name = self.dof_names[i]
-            angle = self.named_default_joint_angles[name]
-            self.default_dof_pos[:, i] = angle
+        # self.dof_names = anymal.dof_names
+        # for i in range(self.num_actions):
+        #     name = self.dof_names[i]
+        #     angle = self.named_default_joint_angles[name]
+        #     self.default_dof_pos[:, i] = angle
 
     def post_reset(self):
         self.base_init_state = torch.tensor(
@@ -297,7 +297,7 @@ class AnymalTerrainTask(RLTask):
             self.num_envs, self.num_actions, dtype=torch.float, device=self.device, requires_grad=False
         )
         self.feet_air_time = torch.zeros(self.num_envs, 4, dtype=torch.float, device=self.device, requires_grad=False)
-        self.last_dof_vel = torch.zeros((self.num_envs, 12), dtype=torch.float, device=self.device, requires_grad=False)
+        self.last_dof_vel = torch.zeros((self.num_envs, self._num_joints), dtype=torch.float, device=self.device, requires_grad=False)
 
         for i in range(self.num_envs):
             self.env_origins[i] = self.terrain_origins[self.terrain_levels[i], self.terrain_types[i]]
@@ -316,6 +316,12 @@ class AnymalTerrainTask(RLTask):
         self.init_done = True
 
     def reset_idx(self, env_ids):
+        self.dof_names = self._anymals.dof_names
+        for i in range(self.num_dof):
+            name = self.dof_names[i]
+            angle = self.named_default_joint_angles[name]
+            self.default_dof_pos[:, i] = angle
+
         indices = env_ids.to(dtype=torch.int32)
 
         positions_offset = torch_rand_float(0.5, 1.5, (len(env_ids), self.num_dof), device=self.device)
@@ -356,7 +362,6 @@ class AnymalTerrainTask(RLTask):
         self.feet_air_time[env_ids] = 0.0
         self.progress_buf[env_ids] = 0
         self.reset_buf[env_ids] = 1
-
         # fill extras
         self.extras["episode"] = {}
         for key in self.episode_sums.keys():
@@ -365,6 +370,15 @@ class AnymalTerrainTask(RLTask):
             )
             self.episode_sums[key][env_ids] = 0.0
         self.extras["episode"]["terrain_level"] = torch.mean(self.terrain_levels.float())
+
+    def _keep_arm_fixed(self):
+        index = [0,1,2,3,4,9,14,19,20]
+        self.dof_pos[:, index] = self.default_dof_pos[:,index]
+        self.dof_vel[:, [index]] = 0.0
+        self._anymals.set_joint_positions(positions=self.dof_pos[:].clone(), 
+                                          indices=torch.arange(self.num_envs, device=self.device))
+        self._anymals.set_joint_velocities(velocities=self.dof_vel[:].clone(), 
+                                          indices=torch.arange(self.num_envs, device=self.device))
 
     def update_terrain_level(self, env_ids):
         if not self.init_done or not self.curriculum:
@@ -389,21 +403,27 @@ class AnymalTerrainTask(RLTask):
         self.knee_pos, self.knee_quat = self._anymals._knees.get_world_poses(clone=False)
 
     def pre_physics_step(self, actions):
+        # import ipdb; ipdb.set_trace()
+
         if not self._env._world.is_playing():
             return
-
         self.actions = actions.clone().to(self.device)
+        actions = torch.cat((self.default_dof_pos[:, :5], self.actions[:, :4], self.default_dof_pos[:, 9].unsqueeze(-1), self.actions[:, 4:8],
+                             self.default_dof_pos[:, 14].unsqueeze(-1), self.actions[:, 8:12], self.default_dof_pos[:, 19:21]), dim=1)
         for i in range(self.decimation):
             if self._env._world.is_playing():
                 torques = torch.clip(
-                    self.Kp * (self.action_scale * self.actions + self.default_dof_pos - self.dof_pos)
+                    self.Kp * (self.action_scale * actions + self.default_dof_pos - self.dof_pos)
                     - self.Kd * self.dof_vel,
                     -80.0,
                     80.0,
                 )
+                # torques = torch.zeros_like(torques).to(self.device)
                 self._anymals.set_joint_efforts(torques)
                 self.torques = torques
+
                 SimulationContext.step(self._env._world, render=False)
+                self._keep_arm_fixed()
                 self.refresh_dof_state_tensors()
 
     def post_physics_step(self):
