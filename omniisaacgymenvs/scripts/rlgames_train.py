@@ -76,7 +76,7 @@ class RLGTrainer:
         )
 
 
-@hydra.main(version_base=None, config_name="config", config_path="../cfg")
+@hydra.main(config_name="config", config_path="../cfg")
 def parse_hydra_configs(cfg: DictConfig):
 
     time_str = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")

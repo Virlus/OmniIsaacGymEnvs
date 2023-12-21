@@ -33,9 +33,9 @@ class FrankaCabinetTask(RLTask):
         self.distX_offset = 0.04
         self.dt = 1 / 60.0
 
-        self._num_observations = 23
+        self._num_observations = 29
         self._num_actions = 9
-
+        self.num_joints = 12
         RLTask.__init__(self, name, env)
         return
 
@@ -62,6 +62,16 @@ class FrankaCabinetTask(RLTask):
         self.finger_dist_reward_scale = self._task_cfg["env"]["fingerDistRewardScale"]
         self.action_penalty_scale = self._task_cfg["env"]["actionPenaltyScale"]
         self.finger_close_reward_scale = self._task_cfg["env"]["fingerCloseRewardScale"]
+
+    def keep_base_fixed(self, ):
+        index = [0, 1, 2]
+        self.franka_dof_pos[:, index] = self.franka_default_dof_pos[:, index]
+        # self.franka_dof_vel[:, index] = 0.
+        self._frankas.set_joint_positions(self.franka_dof_pos[:].clone(),
+                                          indices=torch.arange(self.num_envs, device=self.device))
+        # self._frankas.set_joint_velocities(self.franka_dof_vel[:].clone(),
+                                        #    indices=torch.arange(self.num_envs, device=self.device))
+        
 
     def set_up_scene(self, scene) -> None:
         self.get_franka()
@@ -241,11 +251,8 @@ class FrankaCabinetTask(RLTask):
         self.drawer_up_axis = torch.tensor([0, 0, 1], device=self._device, dtype=torch.float).repeat(
             (self._num_envs, 1)
         )
-
-        self.franka_default_dof_pos = torch.tensor(
-            [1.157, -1.066, -0.155, -2.239, -1.841, 1.003, 0.469, 0.035, 0.035], device=self._device
-        )
-
+        self.franka_default_dof_pos = torch.ones((self.num_envs, 12), device=self.device, dtype=torch.float32) * \
+            torch.tensor([0.0, 0.0, 0.0, 1.157, -1.066, -0.155, -2.239, -1.841, 1.003, 0.469, 0.035, 0.035]).to(self.device)
         self.actions = torch.zeros((self._num_envs, self.num_actions), device=self._device)
 
     def get_observations(self) -> dict:
@@ -298,6 +305,7 @@ class FrankaCabinetTask(RLTask):
         return observations
 
     def pre_physics_step(self, actions) -> None:
+        
         if not self._env._world.is_playing():
             return
 
@@ -306,23 +314,27 @@ class FrankaCabinetTask(RLTask):
             self.reset_idx(reset_env_ids)
 
         self.actions = actions.clone().to(self._device)
-        targets = self.franka_dof_targets + self.franka_dof_speed_scales * self.dt * self.actions * self.action_scale
+
+        actions = torch.cat((self.franka_default_dof_pos[:, :3], self.actions), dim=1)
+        targets = self.franka_dof_targets + self.franka_dof_speed_scales * self.dt * actions * self.action_scale
         self.franka_dof_targets[:] = tensor_clamp(targets, self.franka_dof_lower_limits, self.franka_dof_upper_limits)
         env_ids_int32 = torch.arange(self._frankas.count, dtype=torch.int32, device=self._device)
 
         self._frankas.set_joint_position_targets(self.franka_dof_targets, indices=env_ids_int32)
+        self.keep_base_fixed()
 
     def reset_idx(self, env_ids):
+
         indices = env_ids.to(dtype=torch.int32)
         num_indices = len(indices)
-
         # reset franka
         pos = tensor_clamp(
-            self.franka_default_dof_pos.unsqueeze(0)
+            self.franka_default_dof_pos[env_ids]
             + 0.25 * (torch.rand((len(env_ids), self.num_franka_dofs), device=self._device) - 0.5),
             self.franka_dof_lower_limits,
             self.franka_dof_upper_limits,
         )
+        pos[:, :3] = 0.
         dof_pos = torch.zeros((num_indices, self._frankas.num_dof), device=self._device)
         dof_vel = torch.zeros((num_indices, self._frankas.num_dof), device=self._device)
         dof_pos[:, :] = pos
