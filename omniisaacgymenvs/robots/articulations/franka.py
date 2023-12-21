@@ -42,7 +42,7 @@ class Franka(Robot):
             if assets_root_path is None:
                 carb.log_error("Could not find Isaac Sim assets folder")
             # self._usd_path = assets_root_path + "/Isaac/Robots/Franka/franka_instanceable.usd"
-            self._usd_path = "/home/elgceben/OmniIsaacGymEnvs/resources/ridgeback_franka/ridgeback_franka.usd"
+            self._usd_path = "/home/PJLAB/yuwenye/Documents/OmniIsaacGymEnvs/resources/ridgeback_franka/ridgeback_franka.usd"
 
         add_reference_to_stage(self._usd_path, prim_path)
 

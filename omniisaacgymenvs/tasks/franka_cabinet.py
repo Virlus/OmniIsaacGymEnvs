@@ -67,8 +67,8 @@ class FrankaCabinetTask(RLTask):
         index = [0, 1, 2]
         self.franka_dof_pos[:, index] = self.franka_default_dof_pos[:, index]
         # self.franka_dof_vel[:, index] = 0.
-        self._frankas.set_joint_positions(self.franka_dof_pos[:].clone(),
-                                          indices=torch.arange(self.num_envs, device=self.device))
+        # self._frankas.set_joint_positions(self.franka_dof_pos[:].clone(),
+        #                                   indices=torch.arange(self.num_envs, device=self.device))
         # self._frankas.set_joint_velocities(self.franka_dof_vel[:].clone(),
                                         #    indices=torch.arange(self.num_envs, device=self.device))
         
@@ -81,7 +81,7 @@ class FrankaCabinetTask(RLTask):
 
         super().set_up_scene(scene, filter_collisions=False)
 
-        self._frankas = FrankaView(prim_paths_expr="/World/envs/.*/franka", name="franka_view")
+        self._frankas = FrankaView(prim_paths_expr="/World/envs/.*/panda_mobile", name="franka_view")
         self._cabinets = CabinetView(prim_paths_expr="/World/envs/.*/cabinet", name="cabinet_view")
 
         scene.add(self._frankas)
@@ -135,7 +135,7 @@ class FrankaCabinetTask(RLTask):
         self.init_data()
 
     def get_franka(self):
-        franka = Franka(prim_path=self.default_zero_env_path + "/franka", name="franka")
+        franka = Franka(prim_path=self.default_zero_env_path + "/panda_mobile", name="franka")
         self._sim_config.apply_articulation_settings(
             "franka", get_prim_at_path(franka.prim_path), self._sim_config.parse_actor_config("franka")
         )
@@ -208,17 +208,17 @@ class FrankaCabinetTask(RLTask):
         stage = get_current_stage()
         hand_pose = get_env_local_pose(
             self._env_pos[0],
-            UsdGeom.Xformable(stage.GetPrimAtPath("/World/envs/env_0/franka/panda_link7")),
+            UsdGeom.Xformable(stage.GetPrimAtPath("/World/envs/env_0/panda_mobile/panda_link7")),
             self._device,
         )
         lfinger_pose = get_env_local_pose(
             self._env_pos[0],
-            UsdGeom.Xformable(stage.GetPrimAtPath("/World/envs/env_0/franka/panda_leftfinger")),
+            UsdGeom.Xformable(stage.GetPrimAtPath("/World/envs/env_0/panda_mobile/panda_leftfinger")),
             self._device,
         )
         rfinger_pose = get_env_local_pose(
             self._env_pos[0],
-            UsdGeom.Xformable(stage.GetPrimAtPath("/World/envs/env_0/franka/panda_rightfinger")),
+            UsdGeom.Xformable(stage.GetPrimAtPath("/World/envs/env_0/panda_mobile/panda_rightfinger")),
             self._device,
         )
 
@@ -313,7 +313,8 @@ class FrankaCabinetTask(RLTask):
         if len(reset_env_ids) > 0:
             self.reset_idx(reset_env_ids)
 
-        self.actions = actions.clone().to(self._device)
+        self.actions = actions.clone().to(self._device) 
+        # print("Current actions: ", self.actions)
 
         actions = torch.cat((self.franka_default_dof_pos[:, :3], self.actions), dim=1)
         targets = self.franka_dof_targets + self.franka_dof_speed_scales * self.dt * actions * self.action_scale
