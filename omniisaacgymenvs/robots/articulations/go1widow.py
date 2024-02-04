@@ -34,8 +34,10 @@ from omni.isaac.core.prims import RigidPrimView
 from omni.isaac.core.robots.robot import Robot
 from omni.isaac.core.utils.nucleus import get_assets_root_path
 from omni.isaac.core.utils.stage import add_reference_to_stage
+from omni.isaac.core.utils.prims import get_prim_at_path
+from omniisaacgymenvs.tasks.utils.usd_utils import set_drive
 from pxr import PhysxSchema
-
+import math
 
 class Go1Widow(Robot):
     def __init__(
@@ -66,31 +68,51 @@ class Go1Widow(Robot):
             articulation_controller=None,
         )
 
-        self._dof_names = ["FL_hip_joint",
-                           "FL_thigh_joint",
-                           "FL_calf_joint",
-                           "FR_hip_joint",
-                           "FR_thigh_joint",
-                           "FR_calf_joint",
+        self._dof_names = ["trunk/FL_hip_joint",
+                           "FL_hip/FL_thigh_joint",
+                           "FL_thigh/FL_calf_joint",
 
+                           "trunk/FR_hip_joint",
+                           "FR_hip/FR_thigh_joint",
+                           "FR_thigh/FR_calf_joint",
 
-                           
-                           "RL_hip_joint",
-                           "RL_thigh_joint",
-                           "RL_calf_joint",
+                           "trunk/RL_hip_joint",
+                           "RL_hip/RL_thigh_joint",
+                           "RL_thigh/RL_calf_joint",
 
-                           "RR_hip_joint",
-                           "RR_thigh_joint",
-                           "RR_calf_joint",
-                           "widow_waist",
-                           "widow_shoulder",
-                           "widow_elbow",
-                           "widow_forearm_roll",
-                           "widow_wrist_angle",
-                           "widow_wrist_rotate",
-                           "widow_forearm_roll",
-                           "widow_left_finger",
-                           "widow_right_finger",]
+                           "trunk/RR_hip_joint",
+                           "RR_hip/RR_thigh_joint",
+                           "RR_thigh/RR_calf_joint",
+
+                           "wx250s_base_link/widow_waist",
+                           "wx250s_shoulder_link/widow_shoulder",
+                           "wx250s_upper_arm_link/widow_elbow",
+                           "wx250s_upper_forearm_link/widow_forearm_roll",
+                           "wx250s_lower_forearm_link/widow_wrist_angle",
+                           "wx250s_wrist_link/widow_wrist_rotate",
+                           "wx250s_fingers_link/widow_left_finger",
+                           "wx250s_fingers_link/widow_right_finger",]
+        drive_type = ["angular"] * 18 + ["linear"] * 2
+        default_dof_pos = [0.1, 0.8, -1.5, -0.1, 0.8, -1.5, 0.1, 1.0, -1.5, -0.1, 1.0, -1.5] + [0.] * 8
+        stiffness = [35] * 12 + [5] * 6 + [10000] * 2
+        damping = [1] * 18 + [100] * 2
+        max_force = [100] * 12 + [87, 87, 87, 87, 12, 12, 200, 200]
+        max_velocity = [2.61] * 18 + [0.2, 0.2] 
+        import ipdb; ipdb.set_trace()
+        for i, dof in enumerate(self._dof_names):
+            set_drive(
+                prim_path=f"{self.prim_path}/{dof}",
+                drive_type=drive_type[i],
+                target_type="position",
+                target_value=default_dof_pos[i],
+                stiffness=stiffness[i],
+                damping=damping[i],
+                max_force=max_force[i],
+            )
+            # PhysxSchema.PhysxJointAPI(get_prim_at_path(f""))
+            PhysxSchema.PhysxJointAPI(get_prim_at_path(f"{self.prim_path}/{dof}")).CreateMaxJointVelocityAttr().Set(
+                max_velocity[i]
+            )
 
     @property
     def dof_names(self):
